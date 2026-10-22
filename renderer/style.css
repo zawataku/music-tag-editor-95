@@ -451,6 +451,69 @@ label.cmt {
   margin: 10px 0 4px;
 }
 
+/* ---- artwork tab ---- */
+.artlabel {
+  margin-bottom: 4px;
+}
+
+.artframe {
+  flex: 1 1 auto;
+  min-height: 120px;
+  position: relative;
+  overflow: hidden;
+  outline: none;
+  background: var(--field);
+  box-shadow: inset -1px -1px var(--white), inset 1px 1px var(--shadow), inset -2px -2px var(--face-light), inset 2px 2px var(--dark);
+}
+
+.artframe:focus-visible {
+  outline: 1px dotted #000;
+  outline-offset: -5px;
+}
+
+.artframe.dis {
+  background: var(--face);
+}
+
+.artframe.drop {
+  outline: 2px dotted var(--sel);
+  outline-offset: -6px;
+}
+
+/* centred, scaled down to fit, never scaled up */
+.artframe img {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+  max-width: calc(100% - 8px);
+  max-height: calc(100% - 8px);
+  object-fit: contain;
+}
+
+.artframe .ph {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  transform: translateY(-50%);
+  text-align: center;
+  color: var(--shadow);
+}
+
+.artinfo {
+  min-height: 14px;
+  margin: 6px 0 8px;
+}
+
+.artbtns {
+  display: flex;
+  gap: 6px;
+}
+
+.artbtns .grow {
+  flex: 1 1 auto;
+}
+
 textarea.fld {
   flex: 1 1 auto;
   height: auto;

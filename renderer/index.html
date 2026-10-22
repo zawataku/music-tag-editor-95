@@ -158,7 +158,20 @@
           </div>
 
           <!-- artwork -->
-          <div class="pg hidden" id="pageArtwork"></div>
+          <div class="pg hidden" id="pageArtwork">
+            <label class="artlabel" for="artFrame">アルバム アートワーク(<u>A</u>)</label>
+            <div class="artframe" id="artFrame" tabindex="0" data-access="a">
+              <img id="artImg" class="hidden" alt="">
+              <div class="ph" id="artPh">アートワークがありません</div>
+            </div>
+            <div class="artinfo" id="artInfo"></div>
+            <div class="artbtns">
+              <button class="btn" id="btnArtAdd" data-access="d"><span class="lbl">アートワークを追加(<u>D</u>)…</span></button>
+              <span class="grow"></span>
+              <button class="btn" id="btnArtDel" data-access="r"><span class="lbl">削除(<u>R</u>)</span></button>
+              <button class="btn" id="btnArtSave" data-access="e"><span class="lbl">書き出し(<u>E</u>)…</span></button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

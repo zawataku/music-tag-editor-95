@@ -305,6 +305,11 @@
   }
 
   /** `force` also rewrites the field that has focus (see renderForm). */
+  function renderSheet(force) {
+    renderForm(force);
+    renderArtwork();
+  }
+
   function renderAll(force) {
     sortOrder();
     renderHead();
@@ -312,14 +317,14 @@
     renderStatus();
     renderTitle();
     renderCommands();
-    renderForm(force);
+    renderSheet(force);
   }
 
   function selectionChanged() {
     renderSelection();
     renderStatus();
     renderCommands();
-    renderForm(true);
+    renderSheet(true);
   }
 
   /* ============================================================
@@ -422,6 +427,7 @@
     }
     $('pageDetail').classList.toggle('hidden', tab !== 'detail');
     $('pageArtwork').classList.toggle('hidden', tab !== 'artwork');
+    renderArtwork();
   }
 
   function cycleTab(step) {
@@ -503,6 +509,180 @@
   });
 
   /* ============================================================
+     Artwork tab
+     ============================================================ */
+  const ART_WARN_BYTES = 10 * 1024 * 1024;
+  const ART_FORMAT = { 'image/jpeg': 'JPEG', 'image/png': 'PNG' };
+  let shown = null;      // { hash, mime, data, url, state, w, h }: the last picture decoded
+  let wantHash = null;   // what the frame should show now (null: a placeholder)
+  let artToken = 0;
+
+  function fmtSize(n) {
+    // like Explorer, anything non-empty is at least 1 KB
+    const kb = Math.max(n ? 1 : 0, Math.round(n / 1024));
+    return kb >= 1024 ? (n / 1048576).toFixed(1) + ' MB' : kb + ' KB';
+  }
+
+  /** Decide the type from the bytes, not the name: tags must not lie about it. */
+  function sniffImage(b) {
+    if (b[0] === 0xFF && b[1] === 0xD8 && b[2] === 0xFF) return 'image/jpeg';
+    if (b[0] === 0x89 && b[1] === 0x50 && b[2] === 0x4E && b[3] === 0x47) return 'image/png';
+    return null;
+  }
+
+  // Same digest as main/tags.js, so re-adding the cover a file already has is no change.
+  async function sha1Hex(data) {
+    const d = new Uint8Array(await crypto.subtle.digest('SHA-1', data));
+    return Array.from(d, (x) => x.toString(16).padStart(2, '0')).join('');
+  }
+
+  function artPlaceholder(text) {
+    $('artImg').classList.add('hidden');
+    $('artPh').textContent = text;
+    $('artPh').classList.remove('hidden');
+    $('artInfo').textContent = '';
+  }
+
+  function artShow() {
+    $('artPh').classList.add('hidden');
+    $('artImg').classList.remove('hidden');
+    $('artInfo').textContent = (shown.w ? `${shown.w} x ${shown.h} ピクセル / ` : '') +
+      `${ART_FORMAT[shown.mime] || shown.mime} / ${fmtSize(shown.data.length)}`;
+  }
+
+  function setShown(hash, art) {
+    if (shown) URL.revokeObjectURL(shown.url);
+    shown = {
+      hash, mime: art.mime, data: art.data, state: 'loading', w: 0, h: 0,
+      url: URL.createObjectURL(new Blob([art.data], { type: art.mime }))
+    };
+    const img = $('artImg');
+    const mine = shown;
+    // the selection may want something else by the time it decodes
+    const current = () => shown === mine && wantHash === mine.hash;
+    img.onload = () => {
+      mine.state = 'ok';
+      mine.w = img.naturalWidth;
+      mine.h = img.naturalHeight;
+      if (current()) artShow();
+    };
+    img.onerror = () => {
+      mine.state = 'error';
+      if (current()) artPlaceholder('画像を表示できません');
+    };
+    img.src = shown.url;
+  }
+
+  /** The merged artwork of the selection, or MIXED / null. */
+  function selectedArtwork(entries) {
+    return entries.length ? M.merged(entries).artwork : null;
+  }
+
+  // Only drawn while the tab is visible: reading a cover means copying it over IPC.
+  async function renderArtwork() {
+    if (activeTab !== 'artwork') return;
+    const entries = editable();
+    const off = saving || !entries.length;
+    const art = selectedArtwork(entries);
+    $('pageArtwork').classList.toggle('dis', off);
+    $('artFrame').classList.toggle('dis', off);
+    $('btnArtAdd').disabled = off;
+    $('btnArtDel').disabled = off || !art;
+    $('btnArtSave').disabled = off || !art || art === M.MIXED;
+
+    // any read still in flight is for an older selection
+    const token = ++artToken;
+    wantHash = art && art !== M.MIXED ? art.hash : null;
+    if (!art || art === M.MIXED) {
+      artPlaceholder(art === M.MIXED ? '(複数のアートワーク)' : 'アートワークがありません');
+      return;
+    }
+    if (shown && shown.hash === art.hash) {
+      if (shown.state === 'ok') artShow();
+      else if (shown.state === 'error') artPlaceholder('画像を表示できません');
+      return;    // 'loading': onload will show it
+    }
+
+    artPlaceholder('読み込み中…');
+    // an unsaved cover is only in a patch; a saved one has to come from the file
+    const edited = entries.find((e) => e.patch.artwork && e.patch.artwork.hash === art.hash);
+    const data = edited ? edited.patch.artwork : await D.readArtwork(entries[0].path);
+    if (token !== artToken) return;
+    if (!data) { artPlaceholder('アートワークを読み込めませんでした'); return; }
+    setShown(art.hash, data);
+  }
+
+  function artworkEdited(entries) {
+    refreshRows(entries.map((e) => e.path));
+    renderStatus();
+    renderCommands();
+    renderArtwork();
+  }
+
+  /** Validate an image and make it the cover of every selected file. */
+  async function addArtwork(data) {
+    const entries = editable();
+    if (saving || !entries.length) return;
+    const mime = sniffImage(data);
+    if (!mime) {
+      await showDialog({ icon: 'error', message: 'JPEG または PNG を指定してください。' });
+      return;
+    }
+    if (data.length > ART_WARN_BYTES) {
+      const i = await showDialog({
+        icon: 'question',
+        message: `画像のサイズが 10 MB を超えています（${fmtSize(data.length)}）。\nこのまま追加しますか？`,
+        buttons: ['はい(Y)', 'いいえ(N)']
+      });
+      if (i !== 0) return;
+    }
+    M.setArtwork(entries, { mime, data, size: data.length, hash: await sha1Hex(data) });
+    artworkEdited(entries);
+    const changed = entries.filter((e) => 'artwork' in e.patch).length;
+    info(changed ? `${changed} 件のファイルにアートワークを設定しました` : '選択中のファイルと同じアートワークです');
+  }
+
+  async function cmdAddArtwork() {
+    const pick = await D.pickImage();
+    if (pick) addArtwork(pick.data);
+  }
+
+  function cmdDeleteArtwork() {
+    const entries = editable();
+    if (saving || !entries.length || !selectedArtwork(entries)) return;
+    M.setArtwork(entries, null);
+    artworkEdited(entries);
+  }
+
+  async function cmdExportArtwork() {
+    const entries = editable();
+    const art = selectedArtwork(entries);
+    if (!art || art === M.MIXED || !shown || shown.hash !== art.hash) return;
+    const album = M.merged(entries).album;
+    const base = typeof album === 'string' && album.trim() ? album.trim() : 'cover';
+    const name = base.replace(/[\\/:*?"<>|]/g, '_') + (shown.mime === 'image/png' ? '.png' : '.jpg');
+    if (await D.saveImage({ mime: shown.mime, data: shown.data }, name)) info('アートワークを書き出しました');
+  }
+
+  $('btnArtAdd').onclick = cmdAddArtwork;
+  $('btnArtDel').onclick = cmdDeleteArtwork;
+  $('btnArtSave').onclick = cmdExportArtwork;
+  $('artFrame').addEventListener('keydown', (e) => {
+    if (e.key === 'Delete') { e.preventDefault(); cmdDeleteArtwork(); }
+  });
+
+  // Ctrl+V while the tab is showing. The paste event needs no clipboard
+  // permission; Chromium hands over a bitmap from the clipboard as PNG.
+  document.addEventListener('paste', async (e) => {
+    if (activeTab !== 'artwork' || dialogOpen || isTextField(e.target)) return;
+    e.preventDefault();
+    if (saving || !editable().length) return;
+    const item = [...e.clipboardData.items].find((x) => x.kind === 'file' && x.type.startsWith('image/'));
+    if (!item) { info('クリップボードに画像がありません'); return; }
+    addArtwork(new Uint8Array(await item.getAsFile().arrayBuffer()));
+  });
+
+  /* ============================================================
      Save / undo
      ============================================================ */
 
@@ -514,7 +694,7 @@
 
     saving = true;
     renderCommands();
-    renderForm(true);
+    renderSheet(true);
     const failed = [];
     for (let i = 0; i < targets.length; i++) {
       const e = targets[i];
@@ -536,7 +716,7 @@
     saving = false;
     renderStatus();
     renderCommands();
-    renderForm(true);
+    renderSheet(true);
 
     const ok = targets.length - failed.length;
     info(failed.length ? `${ok} 件を保存しました（${failed.length} 件は失敗）` : `${ok} 件を保存しました`);
@@ -560,7 +740,7 @@
     refreshRows(entries.map((e) => e.path));
     renderStatus();
     renderCommands();
-    renderForm(true);
+    renderSheet(true);
     info(`${entries.length} 件の変更を元に戻しました`);
   }
 
@@ -683,19 +863,34 @@
   }
 
   /* ============================================================
-     Drag & drop: add to the list
+     Drag & drop: onto the artwork frame sets the cover,
+     anywhere else adds to the list
      ============================================================ */
+  function onArtFrame(e) {
+    return activeTab === 'artwork' && !!e.target.closest && !!e.target.closest('#artFrame');
+  }
+  function clearDropMarks() {
+    $('lv').classList.remove('drop');
+    $('artFrame').classList.remove('drop');
+  }
   document.addEventListener('dragover', (e) => {
     e.preventDefault();
-    $('lv').classList.add('drop');
+    const art = onArtFrame(e);
+    $('lv').classList.toggle('drop', !art);
+    $('artFrame').classList.toggle('drop', art);
   });
   document.addEventListener('dragleave', (e) => {
-    if (!e.relatedTarget) $('lv').classList.remove('drop');
+    if (!e.relatedTarget) clearDropMarks();
   });
-  document.addEventListener('drop', (e) => {
+  document.addEventListener('drop', async (e) => {
     e.preventDefault();
-    $('lv').classList.remove('drop');
+    clearDropMarks();
     if (dialogOpen) return;
+    if (onArtFrame(e)) {
+      const f = e.dataTransfer.files[0];
+      if (f) addArtwork(new Uint8Array(await f.arrayBuffer()));
+      return;
+    }
     const paths = [];
     for (const f of e.dataTransfer.files) {
       const p = D.pathForFile(f);
@@ -766,7 +961,9 @@
       const page = activeTab === 'detail' ? $('pageDetail') : $('pageArtwork');
       const target = page.querySelector(`[data-access="${k}"]:not(:disabled)`);
       const menu = document.querySelector(`[data-menu="${k}"]`);
-      if (target) { e.preventDefault(); target.focus(); if (target.select) target.select(); }
+      // as in Windows, a button's access key presses it; a field's focuses it
+      if (target && target.tagName === 'BUTTON') { e.preventDefault(); target.click(); }
+      else if (target) { e.preventDefault(); target.focus(); if (target.select) target.select(); }
       else if (menu) { e.preventDefault(); closeMenus(); menu.classList.add('open'); }
       return;
     }
