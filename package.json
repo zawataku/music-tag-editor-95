@@ -11,7 +11,8 @@
     "test": "node --test",
     "dist": "electron-builder",
     "dist:win": "electron-builder --win --x64",
-    "dist:dir": "electron-builder --dir"
+    "dist:dir": "electron-builder --dir",
+    "icon": "node scripts/make-icon.js --preview"
   },
   "build": {
     "appId": "jp.local.musictageditor",
@@ -20,9 +21,11 @@
       "main.js",
       "main/**/*",
       "preload.js",
-      "renderer/**/*"
+      "renderer/**/*",
+      "build/icon.ico"
     ],
     "win": {
+      "icon": "build/icon.ico",
       "target": [
         {
           "target": "nsis",
@@ -49,6 +52,7 @@
       "category": "public.app-category.music"
     },
     "linux": {
+      "icon": "build/icon.png",
       "target": [
         "AppImage"
       ],

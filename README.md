@@ -34,6 +34,9 @@ npm run dist:win     # NSISインストーラ + ポータブル (x64)
 npm run dist:dir     # 展開済みディレクトリのみ（動作確認用、速い）
 ```
 
+アプリのアイコン（`build/icon.ico` `build/icon.png`）は、タイトルバー左上の音符と同じ図形を
+`scripts/make-icon.js` で描いたもの。音符を変えたら同じ図形をスクリプトにも反映し、`npm run icon` で作り直す。
+
 ## 構成
 
 ```
@@ -46,6 +49,8 @@ renderer/style.css   スタイル
 renderer/model.js    複数選択時の値の統合と未保存の差分（DOM 非依存。テスト対象）
 renderer/app.js      レンダラーのロジック
 test/                単体テストと各形式の小さなサンプル（test/fixtures/README.md）
+scripts/make-icon.js アイコン生成（npm run icon）
+build/               生成済みのアイコン（タスクバー・exe 用）
 ```
 
 `renderer/index.html` はブラウザ単体では動かない。node-taglib-sharp が Node 専用のため、

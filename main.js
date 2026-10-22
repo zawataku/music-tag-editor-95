@@ -26,6 +26,7 @@ function createWindow() {
     minWidth: 860,
     minHeight: 560,
     frame: false,               // the title bar is drawn in HTML
+    icon: path.join(__dirname, 'build', 'icon.ico'),   // taskbar; made by `npm run icon`
     backgroundColor: '#c0c0c0',
     show: false,
     webPreferences: {
