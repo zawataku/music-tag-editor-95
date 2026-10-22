@@ -22,7 +22,10 @@ Win98 風の音楽タグエディタ（Electron + node-taglib-sharp）。
 - Task 9 完了。表示（単一/一致/不一致/無し、縮小表示）・枠へのドロップ・Ctrl+V・GIF/偽 PNG の拒否・10 MB 超の確認・
   削除（Alt+R/Delete）・同一画像は変更なし・一括設定→保存（ffprobe で attached_pic を確認）を CDP 経由で確認済み。
   未確認: ネイティブダイアログを使う「アートワークを追加…」「書き出し…」（手動でクリックが必要）。
-  次は Task 10 から。
+- Task 10 完了。README・`docs/manual-test.md` を作成。`npm test` 27 件 PASS、`npm run dist:dir` 成功、
+  `dist/win-unpacked/Music Tag Editor.exe` で読み込み・保存・アートワーク表示を確認済み。
+  計画のタスクはすべて完了。残りは `docs/manual-test.md` のうち自動確認できなかった項目
+  （ネイティブダイアログ経由の開く/フォルダ/アートワーク追加/書き出し、エクスプローラー等での見え方、`dist:win` のインストーラ）。
 
 ## 実装時の判断（計画からの逸脱）
 
