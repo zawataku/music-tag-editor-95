@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="ja">
+
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy"
+    content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' blob: data:; connect-src 'none'">
+  <title>音楽タグエディタ Ver.1.0.0</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+  <div id="app">
+
+    <!-- ================= title bar ================= -->
+    <div class="titlebar">
+      <svg class="ico" viewBox="0 0 16 16" shape-rendering="crispEdges">
+        <path d="M6 3h8v2H7v8H6zM13 5h1v6h-1zM2 11h5v3H2zM9 9h5v3H9z" fill="#000" transform="translate(1 1)" />
+        <path d="M6 3h8v2H7v8H6zM13 5h1v6h-1zM2 11h5v3H2zM9 9h5v3H9z" fill="#ffff00" />
+      </svg>
+      <div class="txt" id="titleText">音楽タグエディタ Ver.1.0.0 － [ファイルが読み込まれていません]</div>
+      <div class="tbtns">
+        <button class="tbtn" id="btnMin" title="最小化"><svg width="7" height="7" shape-rendering="crispEdges">
+            <rect x="0" y="5" width="6" height="2" fill="#000" />
+          </svg></button>
+        <button class="tbtn" id="btnMax" title="最大化"><svg width="9" height="9" shape-rendering="crispEdges">
+            <path d="M0 0h9v2H0zM0 2h1v7H0zM8 2h1v7H8zM0 8h9v1H0z" fill="#000" />
+          </svg></button>
+        <button class="tbtn" id="btnClose" title="閉じる"><svg width="8" height="8" shape-rendering="crispEdges">
+            <path d="M0 0h2v1h1v1h2V1h1V0h2v1H7v1H6v1H5v2h1v1h1v1h1v1H6V7H5V6H3v1H2v1H0V7h1V6h1V5h1V3H2V2H1V1H0z"
+              fill="#000" />
+          </svg></button>
+      </div>
+    </div>
+
+    <!-- ================= menu bar ================= -->
+    <div class="menubar" id="menubar">
+      <div class="menu" data-menu="f">
+        <button type="button">ファイル(<u>F</u>)</button>
+        <div class="pop">
+          <div class="item" data-act="open"><span>音楽ファイルを開く…</span><span class="key">Ctrl+O</span></div>
+          <div class="item" data-act="openDir"><span>フォルダを開く…</span><span class="key">Ctrl+D</span></div>
+          <div class="sep"></div>
+          <div class="item dis" data-act="save" id="miSave"><span>保存</span><span class="key">Ctrl+S</span></div>
+          <div class="sep"></div>
+          <div class="item dis" data-act="reveal" id="miReveal"><span>エクスプローラーで表示</span></div>
+          <div class="sep"></div>
+          <div class="item" data-act="quit"><span>アプリケーションの終了</span><span class="key">Alt+F4</span></div>
+        </div>
+      </div>
+      <div class="menu" data-menu="e">
+        <button type="button">編集(<u>E</u>)</button>
+        <div class="pop">
+          <div class="item dis" data-act="undo" id="miUndo"><span>元に戻す</span><span class="key">Ctrl+Z</span></div>
+          <div class="sep"></div>
+          <div class="item dis" data-act="selectAll" id="miSelectAll"><span>すべて選択</span><span class="key">Ctrl+A</span></div>
+        </div>
+      </div>
+      <div class="menu" data-menu="v">
+        <button type="button">表示(<u>V</u>)</button>
+        <div class="pop">
+          <div class="item dis" data-act="tabDetail"><span>詳細</span></div>
+          <div class="item dis" data-act="tabArtwork"><span>アートワーク</span></div>
+        </div>
+      </div>
+      <div class="menu" data-menu="h">
+        <button type="button">ヘルプ(<u>H</u>)</button>
+        <div class="pop">
+          <div class="item" data-act="about"><span>バージョン情報…</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================= toolbar ================= -->
+    <div class="toolbar">
+      <button class="tool" id="tbOpen" title="音楽ファイルを開く">
+        <svg viewBox="0 0 24 24" shape-rendering="crispEdges">
+          <path d="M2 5h7l2 2h11v13H2z" fill="#ffcc66" stroke="#000" />
+          <path d="M2 20l3-9h19l-3 9z" fill="#ffe0a0" stroke="#000" />
+        </svg><span>開く</span>
+      </button>
+      <button class="tool" id="tbDir" title="フォルダごと開く">
+        <svg viewBox="0 0 24 24" shape-rendering="crispEdges">
+          <path d="M2 4h8l2 2h10v14H2z" fill="#e0b040" stroke="#000" />
+          <path d="M11 9h6v2h-5v6h-1z" fill="#000" />
+          <rect x="7" y="15" width="4" height="3" fill="#ffff00" stroke="#000" />
+        </svg><span>フォルダ</span>
+      </button>
+      <div class="tsep"></div>
+      <button class="tool" id="tbSave" title="すべて保存" disabled>
+        <svg viewBox="0 0 24 24" shape-rendering="crispEdges">
+          <path d="M3 3h16l2 2v16H3z" fill="#404080" stroke="#000" />
+          <rect x="6" y="3" width="11" height="7" fill="#fff" stroke="#000" />
+          <rect x="13" y="4" width="2" height="5" fill="#404080" />
+          <rect x="6" y="14" width="12" height="7" fill="#c0c0c0" stroke="#000" />
+        </svg><span>保存</span>
+      </button>
+      <button class="tool" id="tbUndo" title="選択したファイルの変更を元に戻す" disabled>
+        <svg viewBox="0 0 24 24">
+          <path d="M8 9h8a5 5 0 0 1 0 10h-5" fill="none" stroke="#000080" stroke-width="3" />
+          <path d="M2 9l7-6v12z" fill="#000080" />
+        </svg><span>元に戻す</span>
+      </button>
+    </div>
+
+    <!-- ================= body ================= -->
+    <div class="body">
+
+      <!-- ---------- left: file list ---------- -->
+      <div class="pane-left">
+        <div class="lv" id="lv">
+          <div class="lv-head" id="lvHead"></div>
+          <div class="lv-body" id="lvBody" tabindex="0"></div>
+        </div>
+      </div>
+
+      <div class="splitter" id="split"></div>
+
+      <!-- ---------- right: properties ---------- -->
+      <div class="pane-right" id="paneRight">
+        <div class="sheet out" id="sheet"></div>
+      </div>
+    </div>
+
+    <!-- ================= status bar ================= -->
+    <div class="status">
+      <div style="width:280px;" id="stCount">0 個のファイル / 0 個を選択 / 未保存 0</div>
+      <div class="st-grow" id="stInfo">音楽ファイルまたはフォルダをドロップしてください</div>
+    </div>
+  </div>
+
+  <!-- ================= about dialog ================= -->
+  <div class="mask" id="mask">
+    <div class="dlg">
+      <div class="titlebar">
+        <div class="txt">バージョン情報</div>
+        <div class="tbtns"><button class="tbtn" data-close><svg width="8" height="8" shape-rendering="crispEdges">
+              <path d="M0 0h2v1h1v1h2V1h1V0h2v1H7v1H6v1H5v2h1v1h1v1h1v1H6V7H5V6H3v1H2v1H0V7h1V6h1V5h1V3H2V2H1V1H0z"
+                fill="#000" />
+            </svg></button></div>
+      </div>
+      <div class="content">
+        <b>音楽タグエディタ</b><br>
+        Version 1.0.0<br><br>
+        MP3 / M4A / FLAC / OGG のタグとアートワークを編集します。<br>
+        タグの読み書きには node-taglib-sharp を使用しています。<br><br>
+        <span id="aboutEngine">-</span>
+      </div>
+      <div class="actions"><button class="btn" data-close><span class="lbl">OK</span></button></div>
+    </div>
+  </div>
+
+  <script src="model.js"></script>
+  <script src="app.js"></script>
+</body>
+
+</html>

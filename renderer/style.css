@@ -1,0 +1,562 @@
+/* ============================================================
+   Win98 / Office97 style tokens
+   ============================================================ */
+:root {
+  --face: #c0c0c0;
+  --face-light: #dfdfdf;
+  --shadow: #808080;
+  --dark: #0a0a0a;
+  --white: #ffffff;
+  --sel: #000080;
+  --sel-text: #ffffff;
+  --field: #ffffff;
+  --alt-row: #f0f4ff;
+  --title-a: #000080;
+  --title-b: #1084d0;
+  --ui-font: "MS UI Gothic", "ＭＳ Ｐゴシック", "MS PGothic", "Hiragino Kaku Gothic Pro", "Noto Sans JP", sans-serif;
+  --mono-font: "MS Gothic", "ＭＳ ゴシック", "Osaka-Mono", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  background: var(--face);
+  font-family: var(--ui-font);
+  font-size: 12px;
+  color: #000;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: unset;
+  font-smooth: never;
+  user-select: none;
+  overflow: hidden;
+}
+
+/* ---- bevels ---- */
+.out {
+  box-shadow: inset -1px -1px var(--dark), inset 1px 1px var(--white), inset -2px -2px var(--shadow), inset 2px 2px var(--face-light);
+}
+
+.in {
+  box-shadow: inset -1px -1px var(--white), inset 1px 1px var(--shadow), inset -2px -2px var(--face-light), inset 2px 2px var(--dark);
+}
+
+.thin-in {
+  box-shadow: inset -1px -1px var(--white), inset 1px 1px var(--shadow);
+}
+
+.thin-out {
+  box-shadow: inset -1px -1px var(--shadow), inset 1px 1px var(--white);
+}
+
+/* ---- scrollbars ---- */
+::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: var(--face);
+  background-image: linear-gradient(45deg, #fff 25%, transparent 25%, transparent 75%, #fff 75%), linear-gradient(45deg, #fff 25%, transparent 25%, transparent 75%, #fff 75%);
+  background-size: 2px 2px;
+  background-position: 0 0, 1px 1px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--face);
+  box-shadow: inset -1px -1px var(--dark), inset 1px 1px var(--white), inset -2px -2px var(--shadow), inset 2px 2px var(--face-light);
+}
+
+::-webkit-scrollbar-corner {
+  background: var(--face);
+}
+
+::-webkit-scrollbar-button:single-button {
+  background: var(--face);
+  box-shadow: inset -1px -1px var(--dark), inset 1px 1px var(--white), inset -2px -2px var(--shadow), inset 2px 2px var(--face-light);
+  display: block;
+  height: 16px;
+  width: 16px;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+::-webkit-scrollbar-button:vertical:decrement {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='7' height='4'><path d='M3 0h1v1h1v1h1v1h1v1H0V3h1V2h1V1h1z' fill='%23000'/></svg>");
+}
+
+::-webkit-scrollbar-button:vertical:increment {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='7' height='4'><path d='M0 0h7v1H6v1H5v1H4v1H3V3H2V2H1V1H0z' fill='%23000'/></svg>");
+}
+
+::-webkit-scrollbar-button:horizontal:decrement {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='4' height='7'><path d='M4 0v7H3V6H2V5H1V4H0V3h1V2h1V1h1V0z' fill='%23000'/></svg>");
+}
+
+::-webkit-scrollbar-button:horizontal:increment {
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='4' height='7'><path d='M0 0h1v1h1v1h1v1h1v1H3v1H2v1H1v1H0z' fill='%23000'/></svg>");
+}
+
+/* ============================================================
+   Window frame
+   ============================================================ */
+#app {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--face);
+  padding: 3px;
+}
+
+.titlebar {
+  height: 20px;
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0 2px 0 3px;
+  background: linear-gradient(90deg, var(--title-a), var(--title-b));
+  color: #fff;
+  font-weight: bold;
+  -webkit-app-region: drag;
+}
+
+.titlebar .ico {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 auto;
+}
+
+.titlebar .txt {
+  flex: 1 1 auto;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.tbtns {
+  display: flex;
+  gap: 2px;
+  -webkit-app-region: no-drag;
+}
+
+.tbtn {
+  width: 16px;
+  height: 14px;
+  background: var(--face);
+  border: 0;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  box-shadow: inset -1px -1px var(--dark), inset 1px 1px var(--white), inset -2px -2px var(--shadow), inset 2px 2px var(--face-light);
+}
+
+.tbtn:active {
+  box-shadow: inset 1px 1px var(--shadow), inset -1px -1px var(--white);
+}
+
+.tbtn svg {
+  display: block;
+}
+
+/* ---- menu bar ---- */
+.menubar {
+  flex: 0 0 auto;
+  display: flex;
+  height: 20px;
+  align-items: stretch;
+  padding: 1px 0;
+}
+
+.menu {
+  position: relative;
+}
+
+.menu>button {
+  font: inherit;
+  background: transparent;
+  border: 0;
+  padding: 2px 7px;
+  height: 100%;
+  cursor: default;
+  color: #000;
+}
+
+.menu.open>button,
+.menu>button:hover {
+  background: var(--sel);
+  color: var(--sel-text);
+}
+
+.menu .pop {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  min-width: 180px;
+  z-index: 60;
+  background: var(--face);
+  padding: 2px;
+  box-shadow: inset -1px -1px var(--dark), inset 1px 1px var(--white), inset -2px -2px var(--shadow), inset 2px 2px var(--face-light), 2px 2px 0 rgba(0, 0, 0, .35);
+}
+
+.menu.open .pop {
+  display: block;
+}
+
+.pop .item {
+  display: flex;
+  justify-content: space-between;
+  gap: 24px;
+  padding: 3px 18px 3px 22px;
+  white-space: nowrap;
+  cursor: default;
+}
+
+.pop .item:hover:not(.dis) {
+  background: var(--sel);
+  color: var(--sel-text);
+}
+
+.pop .item.dis {
+  color: var(--shadow);
+  text-shadow: 1px 1px 0 var(--white);
+}
+
+.pop .sep {
+  height: 2px;
+  margin: 3px 2px;
+  box-shadow: inset 0 1px var(--shadow), inset 0 -1px var(--white);
+}
+
+.pop .item .key {
+  color: inherit;
+}
+
+/* ---- toolbar ---- */
+.toolbar {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 3px 2px 2px;
+  margin-bottom: 2px;
+  box-shadow: inset 0 -1px var(--shadow), inset 0 -2px var(--white);
+}
+
+.tool {
+  width: 52px;
+  padding: 2px 0 1px;
+  background: transparent;
+  border: 2px solid transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  font: inherit;
+  cursor: default;
+  color: #000;
+}
+
+.tool:hover:not(:disabled) {
+  border-color: var(--white) var(--shadow) var(--shadow) var(--white);
+}
+
+.tool:active:not(:disabled) {
+  border-color: var(--shadow) var(--white) var(--white) var(--shadow);
+}
+
+.tool:active:not(:disabled) span,
+.tool:active:not(:disabled) svg {
+  transform: translate(1px, 1px);
+}
+
+.tool:disabled {
+  color: var(--shadow);
+  text-shadow: 1px 1px 0 var(--white);
+}
+
+.tool:disabled svg {
+  opacity: .4;
+  filter: grayscale(1);
+}
+
+.tool svg {
+  width: 24px;
+  height: 24px;
+  image-rendering: pixelated;
+}
+
+.tool span {
+  font-size: 11px;
+  line-height: 1.2;
+}
+
+.tsep {
+  width: 2px;
+  align-self: stretch;
+  margin: 2px 3px;
+  box-shadow: inset 1px 0 var(--shadow), inset -1px 0 var(--white);
+}
+
+/* ============================================================
+   Body: file list | properties
+   ============================================================ */
+.body {
+  flex: 1 1 auto;
+  display: flex;
+  min-height: 0;
+  padding: 0 1px;
+}
+
+.pane-left {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+}
+
+.pane-right {
+  width: 380px;
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.splitter {
+  flex: 0 0 auto;
+  width: 5px;
+  cursor: ew-resize;
+}
+
+/* property sheet frame; tabs and pages come in later tasks */
+.sheet {
+  flex: 1 1 auto;
+  min-height: 0;
+  background: var(--face);
+}
+
+/* ---- listview ---- */
+.lv {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--field);
+  box-shadow: inset -1px -1px var(--white), inset 1px 1px var(--shadow), inset -2px -2px var(--face-light), inset 2px 2px var(--dark);
+  padding: 2px;
+}
+
+.lv-head {
+  flex: 0 0 auto;
+  display: grid;
+  background: var(--face);
+}
+
+.lv-head>div {
+  position: relative;
+  padding: 2px 4px;
+  overflow: hidden;
+  white-space: nowrap;
+  box-shadow: inset -1px -1px var(--dark), inset 1px 1px var(--white), inset -2px -2px var(--shadow), inset 2px 2px var(--face-light);
+}
+
+.lv-head>div.sorted::after {
+  content: attr(data-arrow);
+  position: absolute;
+  right: 4px;
+}
+
+.lv-head .grip {
+  position: absolute;
+  top: 0;
+  right: -3px;
+  width: 7px;
+  height: 100%;
+  cursor: col-resize;
+  z-index: 5;
+}
+
+.lv-body {
+  flex: 1 1 auto;
+  overflow: auto;
+}
+
+.row {
+  display: grid;
+  cursor: default;
+}
+
+.row>div {
+  padding: 1px 4px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.row:nth-child(even) {
+  background: var(--alt-row);
+}
+
+.lv-body:focus {
+  outline: none;
+}
+
+.lv-head,
+.row {
+  grid-template-columns: var(--cols);
+}
+
+.row.sel {
+  background: var(--sel);
+  color: var(--sel-text);
+}
+
+.lv-body:focus .row.cur {
+  outline: 1px dotted #000;
+  outline-offset: -1px;
+}
+
+.lv-body:focus .row.cur.sel {
+  outline-color: #ff0;
+}
+
+/* unsaved edits */
+.row.dirty {
+  font-weight: bold;
+}
+
+/* taglib could not open the file */
+.row.unread {
+  color: var(--shadow);
+}
+
+/* the last save failed */
+.row.err {
+  color: #c00000;
+}
+
+.row.sel.unread,
+.row.sel.err {
+  color: var(--sel-text);
+}
+
+.num {
+  font-family: var(--mono-font);
+}
+
+.lv-empty {
+  padding: 24px 12px;
+  color: var(--shadow);
+  text-align: center;
+  line-height: 1.8;
+}
+
+.lv.drop {
+  outline: 2px dotted var(--sel);
+  outline-offset: -4px;
+}
+
+/* ---- buttons ---- */
+button.btn {
+  font: inherit;
+  background: var(--face);
+  border: 0;
+  padding: 4px 12px;
+  cursor: default;
+  color: #000;
+  min-width: 80px;
+  box-shadow: inset -1px -1px var(--dark), inset 1px 1px var(--white), inset -2px -2px var(--shadow), inset 2px 2px var(--face-light);
+}
+
+button.btn:active:not(:disabled) {
+  box-shadow: inset -1px -1px var(--white), inset 1px 1px var(--dark), inset -2px -2px var(--face-light), inset 2px 2px var(--shadow);
+}
+
+button.btn:active:not(:disabled) .lbl {
+  transform: translate(1px, 1px);
+  display: inline-block;
+}
+
+button.btn:disabled {
+  color: var(--shadow);
+  text-shadow: 1px 1px 0 var(--white);
+}
+
+button.btn:focus-visible {
+  outline: 1px dotted #000;
+  outline-offset: -5px;
+}
+
+/* ---- status bar ---- */
+.status {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 2px;
+  margin-top: 3px;
+}
+
+.status>div {
+  padding: 2px 6px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  box-shadow: inset -1px -1px var(--white), inset 1px 1px var(--shadow);
+}
+
+.st-grow {
+  flex: 1 1 auto;
+}
+
+/* ---- modal ---- */
+.mask {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+}
+
+.mask.show {
+  display: block;
+}
+
+.dlg {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 340px;
+  background: var(--face);
+  padding: 3px;
+  box-shadow: inset -1px -1px var(--dark), inset 1px 1px var(--white), inset -2px -2px var(--shadow), inset 2px 2px var(--face-light), 3px 3px 6px rgba(0, 0, 0, .4);
+}
+
+.dlg .titlebar {
+  -webkit-app-region: no-drag;
+}
+
+.dlg .content {
+  padding: 14px 14px 10px;
+  line-height: 1.8;
+}
+
+.dlg .content b {
+  font-size: 13px;
+}
+
+.dlg .actions {
+  display: flex;
+  justify-content: center;
+  padding: 0 0 10px;
+}
+
+.hidden {
+  display: none !important;
+}
