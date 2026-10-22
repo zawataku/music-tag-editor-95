@@ -1,0 +1,65 @@
+{
+  "name": "music-tag-editor",
+  "version": "1.0.0",
+  "description": "音楽タグエディタ",
+  "main": "main.js",
+  "author": "",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win --x64",
+    "dist:dir": "electron-builder --dir"
+  },
+  "build": {
+    "appId": "jp.local.musictageditor",
+    "productName": "Music Tag Editor",
+    "files": [
+      "main.js",
+      "main/**/*",
+      "preload.js",
+      "renderer/**/*"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ],
+      "category": "public.app-category.music"
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ],
+      "category": "AudioVideo"
+    }
+  },
+  "dependencies": {
+    "node-taglib-sharp": "^6.0.3"
+  },
+  "devDependencies": {
+    "electron": "^43.8.3",
+    "electron-builder": "^26.15.3"
+  }
+}
