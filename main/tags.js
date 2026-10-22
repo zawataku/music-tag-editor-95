@@ -17,6 +17,9 @@ const { File, Picture, PictureType, ByteVector, Id3v2Settings } = require('node-
 // Windows Explorer does not read ID3v2.4, so always save as v2.3.
 Id3v2Settings.defaultVersion = 3;
 Id3v2Settings.forceDefaultVersion = true;
+// Write genres as text ("Rock;Pop"), not ID3v1 numbers ("(17)(13)"):
+// many players show only the first number, or the number itself.
+Id3v2Settings.useNumericGenres = false;
 
 const FIELDS_TEXT = ['title', 'artist', 'album', 'albumArtist', 'composer', 'genre', 'comment'];
 const FIELDS_NUM = ['year', 'track', 'trackCount', 'disc', 'discCount'];

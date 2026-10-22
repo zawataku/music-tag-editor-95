@@ -101,6 +101,23 @@ test('write: 複数値は ; 区切りを正規化', async () => {
   assert.equal(t.artist, 'A; B');
 });
 
+/** Text of the first ID3v2.3 frame `id`, decoded as stored. */
+function id3Frame(p, id) {
+  const b = fs.readFileSync(p);
+  const i = b.indexOf(id);
+  if (i < 0) return null;
+  const body = b.subarray(i + 10, i + 10 + b.readUInt32BE(i + 4));
+  const text = body[0] === 1 ? body.subarray(1).toString('utf16le') : body.subarray(1).toString(body[0] === 3 ? 'utf8' : 'latin1');
+  return text.replace(/^﻿/, '').replace(/\0+$/, '');
+}
+
+test('write: MP3 のジャンルは番号ではなく文字列で書く', async () => {
+  const p = copyFixture('blank.mp3');
+  const t = await write(p, { genre: 'Rock; Pop' });
+  assert.equal(t.genre, 'Rock; Pop');
+  assert.equal(id3Frame(p, 'TCON'), 'Rock;Pop');
+});
+
 test('write: artwork:null で表紙削除', async () => {
   for (const ext of EXTS) {
     const p = copyFixture(`blank.${ext}`);
