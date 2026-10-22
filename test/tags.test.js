@@ -144,11 +144,13 @@ test('write: 失敗時は元ファイル不変・一時ファイル無し', { sk
   const dir = tmpDir();
   const p = copyFixture('blank.mp3', dir);
   const before = fs.readFileSync(p);
-  fs.chmodSync(dir, 0o555);
+  // Windows ignores directory permissions, so make the file itself read-only there.
+  const locked = process.platform === 'win32' ? p : dir;
+  fs.chmodSync(locked, 0o555);
   try {
     await assert.rejects(write(p, { title: 'x' }));
   } finally {
-    fs.chmodSync(dir, 0o755);
+    fs.chmodSync(locked, 0o755);
   }
   assert.deepEqual(fs.readFileSync(p), before);
   assert.deepEqual(fs.readdirSync(dir).filter((n) => n.includes('.mte-tmp')), []);
