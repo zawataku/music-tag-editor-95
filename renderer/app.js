@@ -1,10 +1,10 @@
 /* ============================================================
-   Renderer: file list, selection, menus and window chrome.
-   Edit/merge rules live in model.js (window.Model).
+   Renderer: file list, property sheet, saving, dialogs and
+   window chrome. Edit/merge rules live in model.js (window.Model).
 
    entry = model.js entry + { seq, folder }
      status : 'ok' | 'unreadable' (taglib could not open it)
-              | 'error' (the last save failed)
+              | 'saving' | 'error' (the last save failed)
      seq    : position in the expand() result, for the default sort
      folder : rank of the containing folder, in first-seen order
    ============================================================ */
@@ -14,8 +14,10 @@
   const D = window.desktop;
   const M = window.Model;
 
-  const APP_TITLE = '音楽タグエディタ Ver.1.0.0';
+  const APP_NAME = '音楽タグエディタ';
+  const APP_TITLE = APP_NAME + ' Ver.1.0.0';
   const READ_CONCURRENCY = 4;
+  const TABS = ['detail', 'artwork'];
 
   const COLS = [
     { key: 'track', label: '#', num: true },
@@ -45,6 +47,9 @@
   const pending = new Set();     // paths being read right now
   let seq = 0;
   const folderRank = new Map();  // dir -> rank
+  let activeTab = 'detail';
+  let saving = false;
+  let dialogOpen = false;
 
   const $ = (id) => document.getElementById(id);
   const collator = new Intl.Collator('ja', { numeric: true });
@@ -62,6 +67,9 @@
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
   function info(msg) { $('stInfo').textContent = msg; }
+  function isTextField(el) {
+    return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA');
+  }
 
   /** Column values as shown, edits included. Numbers stay numbers for sorting. */
   function view(e) {
@@ -75,6 +83,22 @@
       format: e.status === 'unreadable' ? 'エラー' : t.format || '',
       name: baseName(e.path)
     };
+  }
+
+  /** Selected entries that can be edited (unreadable files are skipped). */
+  function editable() {
+    const out = [];
+    for (const p of selection) {
+      const e = files.get(p);
+      if (e && e.tags) out.push(e);
+    }
+    return out;
+  }
+
+  function dirtyCount() {
+    let n = 0;
+    for (const e of files.values()) if (M.isDirty(e)) n++;
+    return n;
   }
 
   /* ============================================================
@@ -139,7 +163,7 @@
           : { path: item.path, tags: null, patch: {}, status: 'unreadable', error: res.error, seq: item.seq, folder: item.folder });
         order.push(item.path);
         done++;
-        info(`読み込み中… ${done} / ${todo.length}`);
+        if (!saving) info(`読み込み中… ${done} / ${todo.length}`);
         scheduleRender();
       }
     }
@@ -153,7 +177,7 @@
       selection.add(order[0]);
       anchor = cursor = order[0];
     }
-    renderAll();
+    renderAll(true);
     const bad = todo.filter((t) => files.get(t.path).status === 'unreadable').length;
     info(`${todo.length} 件を読み込みました` +
       (bad ? `（${bad} 件は読み込めませんでした）` : '') +
@@ -179,6 +203,7 @@
       a.seq - b.seq;
   }
 
+  // Only call right before renderList(): rows are addressed by index.
   function sortOrder() {
     const num = sortKey && COLS.find((c) => c.key === sortKey).num;
     order.sort((pa, pb) => {
@@ -194,7 +219,7 @@
   }
 
   /* ============================================================
-     Rendering
+     Rendering: list, status, commands
      ============================================================ */
   function applyColumns() {
     $('lv').style.setProperty('--cols', colWidths.map((w) => w + 'px').join(' ') + ' minmax(80px, 1fr)');
@@ -218,6 +243,16 @@
     return cls;
   }
 
+  function rowHtml(e, i) {
+    const v = view(e);
+    let html = `<div class="${rowClass(e)}" data-i="${i}"${e.error ? ` title="${esc(e.error)}"` : ''}>`;
+    for (const c of COLS) {
+      const val = c.num ? (v[c.key] || '') : v[c.key];
+      html += `<div${c.num ? ' class="num"' : ''}>${esc(val)}</div>`;
+    }
+    return html + '</div>';
+  }
+
   function renderList() {
     const body = $('lvBody');
     if (!order.length) {
@@ -226,17 +261,19 @@
       return;
     }
     let html = '';
-    for (let i = 0; i < order.length; i++) {
-      const e = files.get(order[i]);
-      const v = view(e);
-      html += `<div class="${rowClass(e)}" data-i="${i}"${e.error ? ` title="${esc(e.error)}"` : ''}>`;
-      for (const c of COLS) {
-        const val = c.num ? (v[c.key] || '') : v[c.key];
-        html += `<div${c.num ? ' class="num"' : ''}>${esc(val)}</div>`;
-      }
-      html += '</div>';
-    }
+    for (let i = 0; i < order.length; i++) html += rowHtml(files.get(order[i]), i);
     body.innerHTML = html;
+  }
+
+  /** Redraw only these rows, e.g. after an edit or a save. */
+  function refreshRows(paths) {
+    const rows = $('lvBody').children;
+    const pos = new Map(order.map((p, i) => [p, i]));
+    for (const p of paths) {
+      const i = pos.get(p);
+      // rows past the end are still waiting for the next batched render
+      if (i !== undefined && rows[i] && rows[i].dataset.i === String(i)) rows[i].outerHTML = rowHtml(files.get(p), i);
+    }
   }
 
   /** Cheaper than renderList when only the selection changed. */
@@ -248,9 +285,7 @@
   }
 
   function renderStatus() {
-    let dirty = 0;
-    for (const e of files.values()) if (M.isDirty(e)) dirty++;
-    $('stCount').textContent = `${files.size} 個のファイル / ${selection.size} 個を選択 / 未保存 ${dirty}`;
+    $('stCount').textContent = `${files.size} 個のファイル / ${selection.size} 個を選択 / 未保存 ${dirtyCount()}`;
   }
 
   function renderTitle() {
@@ -259,23 +294,32 @@
   }
 
   function renderCommands() {
+    const canSave = !saving && dirtyCount() > 0;
+    const canUndo = !saving && editable().some(M.isDirty);
+    $('miSave').classList.toggle('dis', !canSave);
+    $('tbSave').disabled = !canSave;
+    $('miUndo').classList.toggle('dis', !canUndo);
+    $('tbUndo').disabled = !canUndo;
     $('miReveal').classList.toggle('dis', !selection.size);
     $('miSelectAll').classList.toggle('dis', !files.size);
   }
 
-  function renderAll() {
+  /** `force` also rewrites the field that has focus (see renderForm). */
+  function renderAll(force) {
     sortOrder();
     renderHead();
     renderList();
     renderStatus();
     renderTitle();
     renderCommands();
+    renderForm(force);
   }
 
   function selectionChanged() {
     renderSelection();
     renderStatus();
     renderCommands();
+    renderForm(true);
   }
 
   /* ============================================================
@@ -367,6 +411,278 @@
   });
 
   /* ============================================================
+     Property sheet tabs
+     ============================================================ */
+  function setTab(tab) {
+    activeTab = tab;
+    for (const b of $('tabstrip').children) {
+      const on = b.dataset.tab === tab;
+      b.classList.toggle('on', on);
+      b.setAttribute('aria-selected', String(on));
+    }
+    $('pageDetail').classList.toggle('hidden', tab !== 'detail');
+    $('pageArtwork').classList.toggle('hidden', tab !== 'artwork');
+  }
+
+  function cycleTab(step) {
+    setTab(TABS[(TABS.indexOf(activeTab) + step + TABS.length) % TABS.length]);
+  }
+
+  $('tabstrip').addEventListener('click', (e) => {
+    const b = e.target.closest('.ptab');
+    if (b) setTab(b.dataset.tab);
+  });
+
+  /* ============================================================
+     Detail tab
+     ============================================================ */
+  const FIELDS = [...$('pageDetail').querySelectorAll('[data-key]')];
+  const isNum = (el) => 'num' in el.dataset;
+
+  /**
+   * Fill the form from the merged selection. Unless `force`, the field
+   * being typed in is left alone so its caret does not jump.
+   */
+  function renderForm(force) {
+    const entries = editable();
+    const off = saving || !entries.length;
+    const m = entries.length ? M.merged(entries) : null;
+    $('pageDetail').classList.toggle('dis', off);
+    for (const el of FIELDS) {
+      el.disabled = off;
+      if (!force && el === document.activeElement) continue;
+      const v = m ? m[el.dataset.key] : '';
+      const mixed = v === M.MIXED;
+      const text = mixed ? '' : isNum(el) ? (v ? String(v) : '') : (v || '');
+      if (el.value !== text) el.value = text;
+      el.placeholder = mixed ? '(複数の値)' : '';
+    }
+  }
+
+  function applyField(el) {
+    const entries = editable();
+    if (saving || !entries.length) return;
+    const key = el.dataset.key;
+    M.setField(entries, key, isNum(el) ? M.parseNum(el.value) : el.value);
+    // once typed into, a "(複数の値)" field holds one value for all
+    el.placeholder = M.merged(entries)[key] === M.MIXED ? '(複数の値)' : '';
+    refreshRows(entries.map((e) => e.path));
+    renderStatus();
+    renderCommands();
+  }
+
+  // Full-width digits come from the Japanese IME; accept them as digits.
+  function toDigits(s) {
+    return s.replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/\D/g, '').slice(0, 4);
+  }
+
+  function sanitizeNum(el) {
+    const s = toDigits(el.value);
+    if (s !== el.value) el.value = s;
+  }
+
+  $('pageDetail').addEventListener('beforeinput', (e) => {
+    if (!isNum(e.target) || e.isComposing || e.data == null) return;
+    if (/[^0-9０-９]/.test(e.data)) e.preventDefault();
+  });
+
+  $('pageDetail').addEventListener('input', (e) => {
+    if (!e.target.dataset.key) return;
+    if (isNum(e.target)) {
+      // the IME's text is only final at compositionend
+      if (e.isComposing) return;
+      sanitizeNum(e.target);
+    }
+    applyField(e.target);
+  });
+
+  $('pageDetail').addEventListener('compositionend', (e) => {
+    if (!isNum(e.target)) return;
+    sanitizeNum(e.target);
+    applyField(e.target);
+  });
+
+  /* ============================================================
+     Save / undo
+     ============================================================ */
+
+  /** Write every dirty file, one at a time. Resolves to the failure count. */
+  async function saveAll() {
+    if (saving) return 0;
+    const targets = order.map((p) => files.get(p)).filter(M.isDirty);
+    if (!targets.length) return 0;
+
+    saving = true;
+    renderCommands();
+    renderForm(true);
+    const failed = [];
+    for (let i = 0; i < targets.length; i++) {
+      const e = targets[i];
+      info(`保存中… ${i + 1} / ${targets.length}`);
+      e.status = 'saving';
+      const res = await D.writeTags(e.path, M.toWirePatch(e));
+      if (res.ok) {
+        e.tags = res.tags;
+        M.clearPatch([e]);
+        e.status = 'ok';
+        delete e.error;
+      } else {
+        e.status = 'error';
+        e.error = res.error;
+        failed.push(e);
+      }
+      refreshRows([e.path]);
+    }
+    saving = false;
+    renderStatus();
+    renderCommands();
+    renderForm(true);
+
+    const ok = targets.length - failed.length;
+    info(failed.length ? `${ok} 件を保存しました（${failed.length} 件は失敗）` : `${ok} 件を保存しました`);
+    if (failed.length) {
+      await showDialog({
+        title: APP_NAME,
+        icon: 'error',
+        message: `${failed.length} 件のファイルを保存できませんでした。`,
+        details: failed.map((e) => `${baseName(e.path)}: ${e.error}`)
+      });
+    }
+    return failed.length;
+  }
+
+  function cmdUndo() {
+    const entries = editable().filter(M.isDirty);
+    if (saving || !entries.length) return;
+    M.clearPatch(entries);
+    // a failed save is moot once its edits are gone
+    for (const e of entries) if (e.status === 'error') { e.status = 'ok'; delete e.error; }
+    refreshRows(entries.map((e) => e.path));
+    renderStatus();
+    renderCommands();
+    renderForm(true);
+    info(`${entries.length} 件の変更を元に戻しました`);
+  }
+
+  /**
+   * Before the list is replaced or the app quits: offer to save.
+   * Resolves true when it is fine to go on.
+   */
+  async function confirmDiscard() {
+    if (saving || dialogOpen) return false;
+    if (!dirtyCount()) return true;
+    const i = await showDialog({
+      title: APP_NAME,
+      icon: 'question',
+      message: '変更を保存しますか？',
+      buttons: ['はい(Y)', 'いいえ(N)', 'キャンセル']
+    });
+    if (i === 0) return (await saveAll()) === 0;
+    return i === 1;
+  }
+
+  /* ============================================================
+     Dialogs (HTML, Win98 message box style)
+     ============================================================ */
+  const ICONS = {
+    question: '<circle cx="16" cy="16" r="14" fill="#fff" stroke="#000"/>' +
+      '<path d="M11.5 12a4.5 4.5 0 1 1 5.4 4.4c-1 .3-.9 1.4-.9 2.6" fill="none" stroke="#0000ff" stroke-width="3"/>' +
+      '<rect x="14.4" y="21.5" width="3.2" height="3.2" fill="#0000ff"/>',
+    error: '<circle cx="16" cy="16" r="14" fill="#ff0000" stroke="#800000"/>' +
+      '<path d="M10.5 10.5l11 11M21.5 10.5l-11 11" stroke="#fff" stroke-width="3.5"/>',
+    info: '<circle cx="16" cy="16" r="14" fill="#fff" stroke="#000"/>' +
+      '<rect x="14" y="7" width="4" height="4" fill="#0000ff"/><path d="M12 13h6v10h2v2h-8v-2h2v-8h-2z" fill="#0000ff"/>'
+  };
+  const GLYPH_X = '<svg width="8" height="8" shape-rendering="crispEdges"><path d="M0 0h2v1h1v1h2V1h1V0h2v1H7v1H6v1H5v2h1v1h1v1h1v1H6V7H5V6H3v1H2v1H0V7h1V6h1V5h1V3H2V2H1V1H0z" fill="#000"/></svg>';
+
+  /**
+   * showDialog({ title, message | html, details?, icon?, buttons?, onOpen? })
+   *   -> Promise<index of the button pressed>
+   * Enter presses the focused button (the first one by default), Esc and
+   * the title bar's close button press the last one. A "(Y)" in a label
+   * makes Y (or Alt+Y) press that button.
+   */
+  function showDialog(opts) {
+    const buttons = opts.buttons || ['OK'];
+    const cancel = buttons.length - 1;
+    dialogOpen = true;
+    const prevFocus = document.activeElement;
+
+    const mask = document.createElement('div');
+    mask.className = 'mask show';
+    mask.innerHTML =
+      '<div class="dlg" role="dialog"><div class="titlebar"><div class="txt"></div>' +
+      `<div class="tbtns"><button class="tbtn" data-x title="閉じる">${GLYPH_X}</button></div></div>` +
+      '<div class="content"><div class="msg">' +
+      (opts.icon ? `<svg width="32" height="32" viewBox="0 0 32 32">${ICONS[opts.icon]}</svg>` : '') +
+      '<div class="text"></div></div></div><div class="actions"></div></div>';
+    mask.querySelector('.titlebar .txt').textContent = opts.title || APP_NAME;
+    const text = mask.querySelector('.text');
+    if (opts.html) text.innerHTML = opts.html; else text.textContent = opts.message;
+    if (opts.details && opts.details.length) {
+      const box = document.createElement('div');
+      box.className = 'details';
+      for (const line of opts.details) box.appendChild(document.createElement('div')).textContent = line;
+      text.appendChild(box);
+    }
+    const accel = {};
+    const btns = buttons.map((lbl, i) => {
+      const b = document.createElement('button');
+      b.className = 'btn';
+      const m = /^(.*)\((\w)\)$/.exec(lbl);
+      b.innerHTML = '<span class="lbl">' + (m ? `${esc(m[1])}(<u>${esc(m[2])}</u>)` : esc(lbl)) + '</span>';
+      if (m) accel[m[2].toLowerCase()] = i;
+      b.onclick = () => close(i);
+      return mask.querySelector('.actions').appendChild(b);
+    });
+    mask.querySelector('[data-x]').onclick = () => close(cancel);
+
+    let resolve;
+    function close(i) {
+      document.removeEventListener('keydown', onKey, true);
+      mask.remove();
+      dialogOpen = false;
+      if (prevFocus && prevFocus.focus) prevFocus.focus();
+      resolve(i);
+    }
+    // Capture phase, so the app's own shortcuts never see these keys.
+    function onKey(e) {
+      e.stopPropagation();
+      const k = e.key.toLowerCase();
+      if (e.key === 'Escape') { e.preventDefault(); close(cancel); }
+      else if (e.key === 'Enter') { e.preventDefault(); close(Math.max(0, btns.indexOf(document.activeElement))); }
+      else if (e.key === 'Tab' || e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        const back = e.shiftKey || e.key === 'ArrowLeft';
+        const i = btns.indexOf(document.activeElement);
+        btns[(i + (back ? -1 : 1) + btns.length) % btns.length].focus();
+      } else if (k in accel && !e.ctrlKey) { e.preventDefault(); close(accel[k]); }
+    }
+    document.addEventListener('keydown', onKey, true);
+    document.body.appendChild(mask);
+    btns[0].focus();
+    if (opts.onOpen) opts.onOpen(mask);
+    return new Promise((r) => { resolve = r; });
+  }
+
+  function showAbout() {
+    showDialog({
+      title: 'バージョン情報',
+      icon: 'info',
+      html: `<b>${APP_NAME}</b><br>Version 1.0.0<br><br>` +
+        'MP3 / M4A / FLAC / OGG のタグとアートワークを編集します。<br>' +
+        'タグの読み書きには node-taglib-sharp を使用しています。<br><br>' +
+        '<span data-engine>確認中…</span>',
+      onOpen: (dlg) => {
+        D.engine().then((v) => {
+          dlg.querySelector('[data-engine]').innerHTML = 'node-taglib-sharp ' + esc(v.taglib) +
+            ' / Electron ' + esc(v.electron) + '<br>Chromium ' + esc(v.chrome) + ' / Node ' + esc(v.node);
+        });
+      }
+    });
+  }
+
+  /* ============================================================
      Drag & drop: add to the list
      ============================================================ */
   document.addEventListener('dragover', (e) => {
@@ -379,6 +695,7 @@
   document.addEventListener('drop', (e) => {
     e.preventDefault();
     $('lv').classList.remove('drop');
+    if (dialogOpen) return;
     const paths = [];
     for (const f of e.dataTransfer.files) {
       const p = D.pathForFile(f);
@@ -391,10 +708,10 @@
      Commands
      ============================================================ */
   async function cmdOpenFiles() {
-    load(await D.openFiles(), true);
+    if (await confirmDiscard()) load(await D.openFiles(), true);
   }
   async function cmdOpenFolder() {
-    load(await D.openFolder(), true);
+    if (await confirmDiscard()) load(await D.openFolder(), true);
   }
   function cmdReveal() {
     const p = order.find((x) => selection.has(x));
@@ -403,6 +720,8 @@
 
   $('tbOpen').onclick = cmdOpenFiles;
   $('tbDir').onclick = cmdOpenFolder;
+  $('tbSave').onclick = saveAll;
+  $('tbUndo').onclick = cmdUndo;
 
   /* ---- menus ---- */
   const menus = document.querySelectorAll('[data-menu]');
@@ -427,36 +746,36 @@
     const act = item.dataset.act;
     if (act === 'open') cmdOpenFiles();
     else if (act === 'openDir') cmdOpenFolder();
+    else if (act === 'save') saveAll();
     else if (act === 'reveal') cmdReveal();
     else if (act === 'quit') D.close();
+    else if (act === 'undo') cmdUndo();
     else if (act === 'selectAll') { selectAll(); $('lvBody').focus(); }
+    else if (act === 'tabDetail') setTab('detail');
+    else if (act === 'tabArtwork') setTab('artwork');
     else if (act === 'about') showAbout();
-  });
-
-  /* ---- about dialog ---- */
-  function showAbout() {
-    const el = $('aboutEngine');
-    el.textContent = '確認中…';
-    $('mask').classList.add('show');
-    D.engine().then((v) => {
-      el.innerHTML = 'node-taglib-sharp ' + esc(v.taglib) + ' / Electron ' + esc(v.electron) +
-        '<br>Chromium ' + esc(v.chrome) + ' / Node ' + esc(v.node);
-    });
-  }
-  $('mask').addEventListener('click', (e) => {
-    if (e.target.closest('[data-close]') || e.target === $('mask')) $('mask').classList.remove('show');
   });
 
   /* ---- keyboard ---- */
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') { $('mask').classList.remove('show'); closeMenus(); return; }
+    if (e.key === 'Escape') { closeMenus(); return; }
+    const k = e.key.toLowerCase();
     if (e.altKey && !e.ctrlKey) {
-      const m = document.querySelector(`[data-menu="${e.key.toLowerCase()}"]`);
-      if (m) { e.preventDefault(); closeMenus(); m.classList.add('open'); }
+      if (!/^[a-z]$/.test(k)) return;
+      // access keys on the visible page first, then the menu bar
+      const page = activeTab === 'detail' ? $('pageDetail') : $('pageArtwork');
+      const target = page.querySelector(`[data-access="${k}"]:not(:disabled)`);
+      const menu = document.querySelector(`[data-menu="${k}"]`);
+      if (target) { e.preventDefault(); target.focus(); if (target.select) target.select(); }
+      else if (menu) { e.preventDefault(); closeMenus(); menu.classList.add('open'); }
       return;
     }
-    if (e.ctrlKey && e.key.toLowerCase() === 'o') { e.preventDefault(); cmdOpenFiles(); return; }
-    if (e.ctrlKey && e.key.toLowerCase() === 'd') { e.preventDefault(); cmdOpenFolder(); }
+    if (e.ctrlKey && e.key === 'Tab') { e.preventDefault(); cycleTab(e.shiftKey ? -1 : 1); return; }
+    if (!e.ctrlKey || e.altKey) return;
+    if (k === 'o') { e.preventDefault(); cmdOpenFiles(); }
+    else if (k === 'd') { e.preventDefault(); cmdOpenFolder(); }
+    else if (k === 's') { e.preventDefault(); saveAll(); }
+    else if (k === 'z' && !isTextField(document.activeElement)) { e.preventDefault(); cmdUndo(); }
   });
 
   /* ---- splitter ---- */
@@ -485,9 +804,11 @@
     if (!e.target.closest('.tbtns')) D.maximize();
   });
 
-  // Nothing can be edited yet, so closing never needs a prompt.
-  D.onCloseRequest(() => D.confirmClose());
+  // The main process holds every close until we say so.
+  D.onCloseRequest(async () => {
+    if (await confirmDiscard()) D.confirmClose();
+  });
 
   applyColumns();
-  renderAll();
+  renderAll(true);
 })();

@@ -323,7 +323,7 @@ body {
 }
 
 .pane-right {
-  width: 380px;
+  width: 400px;
   flex: 0 0 auto;
   display: flex;
   flex-direction: column;
@@ -336,11 +336,126 @@ body {
   cursor: ew-resize;
 }
 
-/* property sheet frame; tabs and pages come in later tasks */
-.sheet {
+/* ---- property sheet ---- */
+.tabstrip {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-end;
+  height: 22px;
+  padding-left: 2px;
+  position: relative;
+  z-index: 1;
+}
+
+.ptab {
+  font: inherit;
+  color: #000;
+  background: var(--face);
+  border: 0;
+  height: 18px;
+  padding: 0 10px;
+  cursor: default;
+  border-radius: 3px 3px 0 0;
+  box-shadow: inset 1px 1px var(--white), inset 2px 2px var(--face-light), inset -1px 0 var(--dark), inset -2px 0 var(--shadow);
+}
+
+/* the selected tab rises 2px and reaches 2px down over the page's top
+   edge, so it reads as one piece with the page */
+.ptab.on {
+  position: relative;
+  z-index: 2;
+  height: 22px;
+  margin: 0 -2px -2px;
+  padding: 0 12px 2px;
+}
+
+.ptab:focus {
+  outline: none;
+}
+
+.ptab:focus-visible .lbl {
+  outline: 1px dotted #000;
+}
+
+.page {
   flex: 1 1 auto;
   min-height: 0;
+  display: flex;
+  flex-direction: column;
+  padding: 12px 10px 10px;
   background: var(--face);
+}
+
+.pg {
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.pg.dis label,
+.pg.dis span {
+  color: var(--shadow);
+  text-shadow: 1px 1px 0 var(--white);
+}
+
+/* ---- detail form ---- */
+.form {
+  display: grid;
+  grid-template-columns: 116px minmax(0, 1fr);
+  gap: 6px 4px;
+  align-items: center;
+}
+
+input.fld,
+textarea.fld {
+  font: inherit;
+  color: #000;
+  border: 0;
+  outline: 0;
+  margin: 0;
+  min-width: 0;
+  height: 21px;
+  padding: 3px 4px;
+  background: var(--field);
+  user-select: text;
+  box-shadow: inset -1px -1px var(--white), inset 1px 1px var(--shadow), inset -2px -2px var(--face-light), inset 2px 2px var(--dark);
+}
+
+.fld::placeholder {
+  color: var(--shadow);
+}
+
+.fld:disabled {
+  background: var(--face);
+  color: var(--shadow);
+}
+
+.numrow {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 3px;
+  margin-top: 8px;
+}
+
+.numrow label:not(:first-child) {
+  margin-left: 8px;
+}
+
+input.fld.n {
+  width: 36px;
+}
+
+label.cmt {
+  margin: 10px 0 4px;
+}
+
+textarea.fld {
+  flex: 1 1 auto;
+  height: auto;
+  min-height: 60px;
+  resize: none;
 }
 
 /* ---- listview ---- */
@@ -532,7 +647,8 @@ button.btn:focus-visible {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 340px;
+  min-width: 300px;
+  max-width: 520px;
   background: var(--face);
   padding: 3px;
   box-shadow: inset -1px -1px var(--dark), inset 1px 1px var(--white), inset -2px -2px var(--shadow), inset 2px 2px var(--face-light), 3px 3px 6px rgba(0, 0, 0, .4);
@@ -551,9 +667,41 @@ button.btn:focus-visible {
   font-size: 13px;
 }
 
+.dlg .msg {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.dlg .msg svg {
+  flex: 0 0 auto;
+}
+
+.dlg .text {
+  min-width: 0;
+  white-space: pre-wrap;
+}
+
+/* per-file reasons under a message */
+.dlg .details {
+  margin-top: 8px;
+  max-height: 160px;
+  overflow: auto;
+  padding: 3px 5px;
+  line-height: 1.5;
+  background: var(--field);
+  user-select: text;
+  box-shadow: inset -1px -1px var(--white), inset 1px 1px var(--shadow), inset -2px -2px var(--face-light), inset 2px 2px var(--dark);
+}
+
+.dlg .details div {
+  white-space: nowrap;
+}
+
 .dlg .actions {
   display: flex;
   justify-content: center;
+  gap: 6px;
   padding: 0 0 10px;
 }
 

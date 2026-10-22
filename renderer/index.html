@@ -60,8 +60,8 @@
       <div class="menu" data-menu="v">
         <button type="button">表示(<u>V</u>)</button>
         <div class="pop">
-          <div class="item dis" data-act="tabDetail"><span>詳細</span></div>
-          <div class="item dis" data-act="tabArtwork"><span>アートワーク</span></div>
+          <div class="item" data-act="tabDetail"><span>詳細</span></div>
+          <div class="item" data-act="tabArtwork"><span>アートワーク</span></div>
         </div>
       </div>
       <div class="menu" data-menu="h">
@@ -119,7 +119,47 @@
 
       <!-- ---------- right: properties ---------- -->
       <div class="pane-right" id="paneRight">
-        <div class="sheet out" id="sheet"></div>
+        <div class="tabstrip" id="tabstrip" role="tablist">
+          <button class="ptab on" data-tab="detail" role="tab"><span class="lbl">詳細</span></button>
+          <button class="ptab" data-tab="artwork" role="tab"><span class="lbl">アートワーク</span></button>
+        </div>
+        <div class="page out">
+
+          <!-- detail -->
+          <div class="pg" id="pageDetail">
+            <div class="form">
+              <label for="fTitle">タイトル(<u>T</u>)</label>
+              <input class="fld" id="fTitle" data-key="title" data-access="t">
+              <label for="fArtist">アーティスト(<u>R</u>)</label>
+              <input class="fld" id="fArtist" data-key="artist" data-access="r">
+              <label for="fAlbum">アルバム(<u>L</u>)</label>
+              <input class="fld" id="fAlbum" data-key="album" data-access="l">
+              <label for="fAlbumArtist">アルバムアーティスト</label>
+              <input class="fld" id="fAlbumArtist" data-key="albumArtist">
+              <label for="fComposer">作曲者(<u>C</u>)</label>
+              <input class="fld" id="fComposer" data-key="composer" data-access="c">
+              <label for="fGenre">ジャンル(<u>G</u>)</label>
+              <input class="fld" id="fGenre" data-key="genre" data-access="g">
+            </div>
+            <div class="numrow">
+              <label for="fYear">年(<u>Y</u>)</label>
+              <input class="fld n" id="fYear" data-key="year" data-num data-access="y" maxlength="4" inputmode="numeric">
+              <label for="fTrack">トラック</label>
+              <input class="fld n" id="fTrack" data-key="track" data-num maxlength="4" inputmode="numeric">
+              <span>/</span>
+              <input class="fld n" id="fTrackCount" data-key="trackCount" data-num maxlength="4" inputmode="numeric" title="総トラック数">
+              <label for="fDisc">ディスク</label>
+              <input class="fld n" id="fDisc" data-key="disc" data-num maxlength="4" inputmode="numeric">
+              <span>/</span>
+              <input class="fld n" id="fDiscCount" data-key="discCount" data-num maxlength="4" inputmode="numeric" title="総ディスク数">
+            </div>
+            <label for="fComment" class="cmt">コメント(<u>M</u>)</label>
+            <textarea class="fld" id="fComment" data-key="comment" data-access="m"></textarea>
+          </div>
+
+          <!-- artwork -->
+          <div class="pg hidden" id="pageArtwork"></div>
+        </div>
       </div>
     </div>
 
@@ -127,27 +167,6 @@
     <div class="status">
       <div style="width:280px;" id="stCount">0 個のファイル / 0 個を選択 / 未保存 0</div>
       <div class="st-grow" id="stInfo">音楽ファイルまたはフォルダをドロップしてください</div>
-    </div>
-  </div>
-
-  <!-- ================= about dialog ================= -->
-  <div class="mask" id="mask">
-    <div class="dlg">
-      <div class="titlebar">
-        <div class="txt">バージョン情報</div>
-        <div class="tbtns"><button class="tbtn" data-close><svg width="8" height="8" shape-rendering="crispEdges">
-              <path d="M0 0h2v1h1v1h2V1h1V0h2v1H7v1H6v1H5v2h1v1h1v1h1v1H6V7H5V6H3v1H2v1H0V7h1V6h1V5h1V3H2V2H1V1H0z"
-                fill="#000" />
-            </svg></button></div>
-      </div>
-      <div class="content">
-        <b>音楽タグエディタ</b><br>
-        Version 1.0.0<br><br>
-        MP3 / M4A / FLAC / OGG のタグとアートワークを編集します。<br>
-        タグの読み書きには node-taglib-sharp を使用しています。<br><br>
-        <span id="aboutEngine">-</span>
-      </div>
-      <div class="actions"><button class="btn" data-close><span class="lbl">OK</span></button></div>
     </div>
   </div>
 
